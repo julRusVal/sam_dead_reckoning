@@ -1,2 +1,0 @@
-[console_scripts]
-dr_node = sam_dead_reckoning.dr_node:main
