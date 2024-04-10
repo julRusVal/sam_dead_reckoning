@@ -186,25 +186,25 @@ class VehicleDR(Node):
         default_robot_name = 'sam0'
         # === Topics ===
         self.declare_parameter('dvl_topic', f'/{default_robot_name}/core/dvl')
-        self.declare_parameter('odom_topic',
-                                        '/sam/dr/dvl_dr')  # topic used in the launch file for the DVL sensor
-        self.declare_parameter('~imu', '/sam/core/imu')
-        self.declare_parameter('~sbg_topic', '/sam/core/imu')
+        self.declare_parameter('odom_topic',f'/{default_robot_name}/dr/dvl_dr')  # topic used in the launch file for the DVL sensor
+        self.declare_parameter('imu', f'/{default_robot_name}/core/imu')
+        self.declare_parameter('sbg_topic', f'/{default_robot_name}/core/imu')
+        self.declare_parameter('depth_topic', '/depth')
+        self.declare_parameter('thrust1_fb', f'/{default_robot_name}/core/rpm_fb1')
+        self.declare_parameter('thrust2_fb', f'/{default_robot_name}/core/rpm_fb2')
+        self.declare_parameter('thrust_vec_cmd', f'/{default_robot_name}/core/thrust')
+        self.declare_parameter('gps_odom_topic', f'/{default_robot_name}/core/gps')
         # === Frames ===
-        self.declare_parameter('~base_frame', 'sam/base_link')
-        self.declare_parameter('~base_frame_2d', 'sam/base_link')
-        self.declare_parameter('~odom_frame', 'sam/odom')
-        self.declare_parameter('~map_frame', 'map')
-        self.declare_parameter('~utm_frame', 'utm')
-        self.declare_parameter('~dvl_frame', 'dvl_link')
-        self.declare_parameter('~dvl_period', 0.2)
-        self.declare_parameter('~dr_period', 0.02)
-        self.declare_parameter('~depth_topic', '/depth')
-        self.declare_parameter('~pressure_frame', 'pressure_link')
-        self.declare_parameter('~thrust1_fb', '/sam/core/rpm_fb1')
-        self.declare_parameter('~thrust2_fb', '/sam/core/rpm_fb2')
-        self.declare_parameter('~thrust_vec_cmd', '/sam/core/thrust')
-        self.declare_parameter('~gps_odom_topic', '/sam/core/gps')
+        self.declare_parameter('base_frame', f'{default_robot_name}/base_link')
+        self.declare_parameter('base_frame_2d', f'{default_robot_name}/base_link')
+        self.declare_parameter('odom_frame', f'{default_robot_name}/odom')
+        self.declare_parameter('map_frame', 'map')
+        self.declare_parameter('utm_frame', 'utm')
+        self.declare_parameter('dvl_frame', 'dvl_link')
+        self.declare_parameter('pressure_frame', 'pressure_link')
+        # === Other ===
+        self.declare_parameter('dvl_period', 0.2)
+        self.declare_parameter('dr_period', 0.02)
 
 
 
