@@ -13,10 +13,11 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
 
-#
+# ROS2 version of tf transformations
 from tf_transformations import euler_from_quaternion, quaternion_from_euler, quaternion_multiply
 
-from std_srvs.srv import SetBool, SetBoolRequest, SetBoolRequest
+# from std_srvs.srv import SetBool  # SetBoolRequest, SetBoolRequest
+from builtin_interfaces.msg import Time
 from geometry_msgs.msg import PointStamped, TransformStamped, Quaternion, PoseWithCovarianceStamped
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
@@ -27,10 +28,10 @@ from sam_msgs.msg import ThrusterAngles
 
 try:
     from .sam_mm import *
-    from .helpers.ros_helpers import rcl_time_to_secs, rcl_time_to_stamp, construct_stamped_transform
+    from .helpers.ros_helpers import rcl_time_to_secs, rcl_time_to_stamp, construct_stamped_transform, ros_time_to_secs
 except ImportError:
     from sam_mm import *
-    from helpers.ros_helpers import rcl_time_to_secs, rcl_time_to_stamp, construct_stamped_transform
+    from helpers.ros_helpers import rcl_time_to_secs, rcl_time_to_stamp, construct_stamped_transform, ros_time_to_secs
 
 
 class VehicleDR(Node):
@@ -139,8 +140,14 @@ class VehicleDR(Node):
         self.thrust_cmd_sub = self.create_subscription(msg_type=ThrusterAngles, topic=self.thrust_topic ,
                                                        callback=self.thrust_cmd_cb , qos_profile=10)
         # TODO will this work in ROS2
-        self.thrust1_sub = message_filters.Subscriber(self.rpm1_topic, ThrusterFeedback)
-        self.thrust2_sub = message_filters.Subscriber(self.rpm2_topic, ThrusterFeedback)
+        # ROS1
+        # self.thrust1_sub = message_filters.Subscriber(self.rpm1_topic, ThrusterFeedback)
+        # self.thrust2_sub = message_filters.Subscriber(self.rpm2_topic, ThrusterFeedback)
+
+        # ROS2
+        # TODO hope this works
+        self.thrust1_sub = message_filters.Subscriber(self, ThrusterFeedback, self.rpm1_topic)
+        self.thrust2_sub = message_filters.Subscriber(self, ThrusterFeedback, self.rpm2_topic)
 
         # Synchronizer
         self.ts = message_filters.ApproximateTimeSynchronizer([self.thrust1_sub, self.thrust2_sub],
@@ -279,7 +286,7 @@ class VehicleDR(Node):
             self.get_logger().warn("Assuming surface vehicle")
 
     def dr_timer(self):
-
+        self.get_logger().info(f"DR_timer - m2o: {self.init_m2o}  stim:{self.init_stim}")
         if self.init_m2o and self.init_stim:
 
             pose_t = np.concatenate([self.pos_t, self.rot_t])  # Catch latest estimate from IMU
@@ -287,6 +294,7 @@ class VehicleDR(Node):
             lin_vel_t = np.zeros(3)
 
             # DVL data coming in
+            self.get_logger().info(f"DVL Status: {self.dvl_on}")
             if self.dvl_on:
                 rot_mat_t = self.fullRotation(pose_t[3], pose_t[4], pose_t[5])
 
@@ -428,9 +436,10 @@ class VehicleDR(Node):
                                      imu_msg.angular_velocity.y,
                                      imu_msg.angular_velocity.z])
 
-            dt = imu_msg.header.stamp.to_sec() - self.t_stim_prev
+            # dt = imu_msg.header.stamp.to_sec() - self.t_stim_prev
+            dt = ros_time_to_secs(imu_msg.header.stamp) - self.t_stim_prev
             self.rot_t = np.array(self.rot_t) + self.vel_rot * dt
-            self.t_stim_prev = imu_msg.header.stamp.to_sec()
+            self.t_stim_prev = ros_time_to_secs(imu_msg.header.stamp)
 
             for rot in self.rot_t:
                 rot = (rot + np.pi) % (2 * np.pi) - np.pi
@@ -441,7 +450,7 @@ class VehicleDR(Node):
 
         else:
             # rospy.loginfo("Stim data coming in")
-            self.t_stim_prev = imu_msg.header.stamp.to_sec()
+            self.t_stim_prev = imu_msg.header.stamp
             self.init_stim = True
 
     def dvl_cb(self, dvl_msg):
@@ -460,17 +469,19 @@ class VehicleDR(Node):
         self.dvl_latest = dvl_msg
 
         if self.dvl_on:
-            dt = dvl_msg.header.stamp.to_sec() - self.t_dvl_prev
-            self.t_dvl_prev = dvl_msg.header.stamp.to_sec()
+            dt = ros_time_to_secs(dvl_msg.header.stamp) - self.t_dvl_prev
+            self.t_dvl_prev = ros_time_to_secs(dvl_msg.header.stamp)
 
             # if dt > self.dvl_period:
             #     print("Missed DVL meas")            
 
         else:
             self.get_logger().info("DVL data coming in")
-            self.t_dvl_prev = dvl_msg.header.stamp.to_sec()
-            self.t_now = dvl_msg.header.stamp.to_sec()
-            self.t_pub = dvl_msg.header.stamp.to_sec()
+            current_header = dvl_msg.header.stamp
+            current_time = ros_time_to_secs(current_header)
+            self.t_dvl_prev = current_time
+            self.t_now = current_time
+            self.t_pub = current_time
             self.dvl_on = True
 
 
